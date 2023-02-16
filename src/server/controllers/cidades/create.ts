@@ -1,17 +1,41 @@
 import { StatusCodes } from 'http-status-codes';
 import { Cidade } from './../../../interfaces/cidade';
 import { Request, Response } from "express";
+import * as yup from "yup";
 
-export const create = (req: Request<Cidade>, res: Response) => {
-    const data: Cidade = req.body;
+const bodyValidator = yup.object().shape({
+    nome: yup.string().required().min(4).max(150),
+    estado: yup.string().required().min(4).max(150)
+});
 
-    if (req.body.nome === undefined) {
-        return res.status(StatusCodes.BAD_REQUEST).send("Informe o nome!");
+export const create = async (req: Request<{}, {}, Cidade>, res: Response) => {
+    let validate: Cidade | undefined = undefined;
+
+    try {
+        validate = await bodyValidator.validate(req.body, { abortEarly: false });
+        console.log(validate);
+
+
+    } catch (err) {
+        const yupError = err as yup.ValidationError;
+        const validatorErrors: Record<string, string> = {};
+
+        yupError.inner.forEach(error => {
+            console.log(error);
+
+            if (error.path === undefined) return
+
+            validatorErrors[error.path] = error.message;
+        });
+
+        return res.status(StatusCodes.BAD_REQUEST).json({
+            status: StatusCodes.BAD_REQUEST,
+            error: validatorErrors
+        });
     }
 
-    if (req.body.estado === undefined) {
-        return res.status(StatusCodes.BAD_REQUEST).send("Informe o estado!");
-    }
-
-    return res.status(StatusCodes.ACCEPTED).send('Creted!');
+    return res.status(StatusCodes.OK).json({
+        status: StatusCodes.OK,
+        message: "City created with success!"
+    });
 };
